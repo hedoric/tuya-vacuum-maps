@@ -1,0 +1,1 @@
+"""Tuya Vacuum Maps integration."""

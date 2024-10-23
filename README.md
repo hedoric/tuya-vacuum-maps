@@ -41,9 +41,16 @@ It's recommended to set up a development environment if you want to make changes
 
 1. Once the devcontainer is created, fork this repository.
 2. Go to the folder containing the `homeassistant-core` folder, it should be called `workspaces`.
-3. Once your fork is created, make sure your terminal path is set to `/workspaces` and run `git clone <your fork url>`.
+3. Once your fork is created, make sure your terminal path is set to `/workspaces` and run `git clone <url>`.
 4. To make testing easier, create a symlink to the component in your Home Assistant devcontainer.
    - Example: `ln -s /workspaces/tuya-vacuum-maps/custom_components/tuya_vacuum_maps /workspaces/homeassistant-core/config/custom_components`
+5. For development, it's recommended you use a virtual environment.
+   1. Create a new virtual environment (Run in the root `/tuya-vacuum-maps` folder):
+      - `python -m venv venv`
+   2. Activate the virtual environment:
+      - `source ./venv/bin/activate`
+6. Install the package in "editable" mode
+   - `pip install -e .`
 
 ## Special Thanks
 
