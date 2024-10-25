@@ -17,6 +17,8 @@ def main():
         vacuum_map = VacuumMap(data)
 
         print(vars(vacuum_map.header))
+        image = vacuum_map.to_image()
+        image.save("layout.png")
 
 
 if __name__ == "__main__":

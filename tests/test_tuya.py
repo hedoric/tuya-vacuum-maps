@@ -4,6 +4,7 @@ import logging
 import os
 
 from dotenv import load_dotenv
+
 from custom_components.tuya_vacuum_maps.tuya import TuyaCloudAPI
 
 _LOGGER = logging.getLogger(__name__)

@@ -6,7 +6,10 @@
 import logging
 
 import lz4.block
+import numpy as np
+from PIL import Image
 
+from custom_components.tuya_vacuum_maps.const import default_colors, pixel_types
 from custom_components.tuya_vacuum_maps.utils import (
     chunks,
     combine_high_low_to_int,
@@ -104,11 +107,9 @@ class VacuumMapRoom:
             )
         ]
 
-        self.name = (
-            bytes.fromhex(vertices_name_str).decode() if self.name_length else ""
-        )
+        self.name = bytes.fromhex(vertices_name_str).decode()
 
-        self.vertex_num = int(room_info_str[92:94], 16)
+        self.vertex_num = int(room_info_str[-2:], 16)
         self.vertex_str = data[
             (byte_pos + (INFO_BYTE_LEN + NAME_BYTE_LEN + 1) * 2) : (
                 byte_pos
@@ -146,6 +147,7 @@ class VacuumMap:
         """
 
         # Parse the header of the map
+        # Should the variables in the header be available without needing to access the header?
         self.header = VacuumMapHeader(data[:MAP_HEADER_LENGTH])
 
         # Invalid map type
@@ -169,6 +171,27 @@ class VacuumMap:
                     f"Map version {self.header.version} is not supported."
                 )
 
+    def to_image(self) -> Image.Image:
+        """Convert the map to an image.
+
+        Taken from tuya_cloud_map_extractor.
+        """
+        pixels = []
+        for height_counter in range(self.header.height):
+            line = []
+            for width_counter in range(self.header.width):
+                pixel_type = pixel_types.v1.get(
+                    self._map_data_array[
+                        width_counter + height_counter * self.header.width
+                    ]
+                )
+                pixel = default_colors.v1.get(pixel_type)
+                if not pixel:
+                    pixel = (20, 20, 20)
+                line.append(pixel)
+            pixels.append(line)
+        return Image.fromarray(np.array(pixels, dtype=np.uint8))
+
     def _parse_map_version_0(self, data: str):
         """Parse the data of a vacuum map with version 0."""
         # "Normal Version" according to google translate
@@ -190,7 +213,7 @@ class VacuumMap:
                 return_bytearray=True,
             )
 
-            # map_data_array = decoded_data_array[:area]
+            self._map_data_array = decoded_data_array[:area]
             map_room_array = decoded_data_array[area:]
 
             rooms = VacuumMapRoom.parse_map_room_array(map_room_array.hex())
@@ -201,7 +224,7 @@ class VacuumMap:
             self.rooms = rooms
 
         else:
-            pass
+            raise NotImplementedError("Uncompressed map data is not yet supported.")
 
     def _parse_map_version_2(self, data: str):
         """Parse the data of a vacuum map with version 2."""
