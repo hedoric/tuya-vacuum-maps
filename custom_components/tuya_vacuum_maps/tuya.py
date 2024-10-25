@@ -31,7 +31,7 @@ class TuyaCloudAPI:
 
         http_method = "GET"
 
-        # TODO: Implement Optional_Signature_key
+        # TTODO: Implement Optional_Signature_key
         optional_signature_key = ""
 
         str_to_sign = (
@@ -57,8 +57,8 @@ class TuyaCloudAPI:
 
         return signature
 
-    def _request(self, endpoint: str, access_token: str = "") -> dict:
-        """Makes a request to the Tuya Cloud API."""
+    def raw_request(self, endpoint: str, access_token: str = "") -> dict:
+        """Make request to the Tuya Cloud API."""
 
         # The 13-digit timestamp
         timestamp = str(int(round(datetime.datetime.now().timestamp() * 1000, 0)))
@@ -102,10 +102,10 @@ class TuyaCloudAPI:
         """Make authenticated request to the Tuya Cloud API."""
 
         # Get access token
-        response = self._request("/v1.0/token?grant_type=1")
+        response = self.raw_request("/v1.0/token?grant_type=1")
 
         access_token = response["result"]["access_token"]
 
-        response = self._request(endpoint, access_token)
+        response = self.raw_request(endpoint, access_token)
 
         return response

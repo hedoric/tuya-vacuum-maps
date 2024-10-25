@@ -1,10 +1,12 @@
 """Functional test for communication with the Tuya Cloud API."""
 
+import logging
 import os
 
+from dotenv import load_dotenv
 from custom_components.tuya_vacuum_maps.tuya import TuyaCloudAPI
 
-from dotenv import load_dotenv
+_LOGGER = logging.getLogger(__name__)
 
 
 def test_tuya_request():
