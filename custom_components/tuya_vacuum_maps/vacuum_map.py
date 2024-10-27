@@ -14,7 +14,6 @@ from custom_components.tuya_vacuum_maps.const import (
     ORIGIN_MAP_COLOR,
     MAP_COLOR,
     BITMAP_TYPE_HEX_MAP,
-    default_colors,
     pixel_types,
 )
 from custom_components.tuya_vacuum_maps.utils import (
@@ -23,7 +22,6 @@ from custom_components.tuya_vacuum_maps.utils import (
     hex_to_ints,
     shrink_number,
     create_house_color_map,
-    hex_to_alpha_hex,
 )
 
 # Length of map header in bytes
@@ -212,10 +210,12 @@ class VacuumMap:
             # "fun_color": default_colors.v1.get("room_color"),
             "fun_color": ["150", "150", "150"],
         }
-        for index, room in enumerate(self.rooms):
-            # This is terrible
+        # This actually works perfectly, what?
+        for room in self.rooms:
             colors["room_color_" + str(room.id)] = ImageColor.getcolor(
-                ORIGIN_MAP_COLOR[index], "RGB"
+                # If the room id is higher then the amount of colors, wrap around
+                ORIGIN_MAP_COLOR[room.id % len(ORIGIN_MAP_COLOR)],
+                "RGB",
             )
 
         for height_counter in range(self.header.height):
