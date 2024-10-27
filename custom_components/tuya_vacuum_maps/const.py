@@ -2,6 +2,95 @@
 
 DOMAIN = "tuya_vacuum_maps"
 
+BITMAP_TYPE_HEX_MAP = {
+    "00": "00",  # Cleaning point
+    "01": "f1",  # Obstacle point
+    "10": "f2",  # Charging pile
+    "11": "ff",  # Unknown area
+}
+
+MAP_COLOR = {
+    "room_60_color": "#D0D0D0",
+    "room_61_color": "#D0D0D1",
+    "room_62_color": "#D0D0D2",
+    "room_63_color": "#D0D0D3",
+}
+
+ORIGIN_MAP_COLOR = [
+    "#F9424F",
+    "#FDD02B",
+    "#46A890",
+    "#208CFF",
+    "#FA7A80",
+    "#A8E772",
+    "#49F9CA",
+    "#7CF8FF",
+    "#F3A0A4",
+    "#79E420",
+    "#65EAF3",
+    "#A188F8",
+    "#F8C6A1",
+    "#BCFF83",
+    "#5CDBFA",
+    "#EEBAFC",
+]
+
+HIGHLIGHT_MAP_COLOR = [
+    "#FF0012",
+    "#FFC800",
+    "#00A57C",
+    "#007BFF",
+    "#FF2832",
+    "#9AFF44",
+    "#00FFBA",
+    "#00F1FF",
+    "#D85258",
+    "#75FF00",
+    "#37F2FF",
+    "#7B56FF",
+    "#F9964E",
+    "#93FF39",
+    "#00CDFF",
+    "#C900FF",
+]
+
+GRAY_MAP_COLOR = [
+    "#E8E8E8",
+    "#D2D2D2",
+    "#B4B4B4",
+    "#A8A8A8",
+    "#818181",
+    "#787878",
+    "#676767",
+    "#4E4E4E",
+    "#CEB7B7",
+    "#A08989",
+    "#886E6E",
+    "#5E4B4B",
+    "#5A4242",
+    "#7B5454",
+    "#4B2F2F",
+    "#3E2323",
+]
+
+BITMAP_TYPE_MAP_REFLECTION = {
+    "00": "sweep",
+    "01": "barrier",
+    "10": "battery",
+    "11": "unknown",
+    "111": "sweep",
+    "001": "barrier",
+    "000": "unknown",
+    "010": "carpet",
+}
+
+BITMAP_TYPE_MAP = {
+    "sweep": "00",
+    "barrier": "01",
+    "battery": "10",
+    "unknown": "11",
+}
+
 
 class pixel_types:
     """Number to type"""
@@ -220,11 +309,11 @@ class pixel_types:
         236: "room_color_59",
         237: "wall_color",
         239: "wall_color",
-        240: "wall_color",  # general obstacle?
+        240: "fun_color",  # general obstacle?
         241: "wall_color",  # wall
         243: "bg_color",  # bg
         248: "wall_color",
-        249: "wall_color",
+        249: "wall_color",  # not room?
         251: "wall_color",
         252: "wall_color",
         253: "wall_color",
@@ -232,7 +321,6 @@ class pixel_types:
     }
 
 
-# Taken from tuya_cloud_map_extractor
 class default_colors:
     """Default colors"""
 

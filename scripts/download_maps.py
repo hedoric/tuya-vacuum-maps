@@ -25,14 +25,18 @@ def main():
     response = tuya.request(ENDPOINT)
 
     maps = response["result"]
-    print(maps)
 
     for vacuum_map in maps:
-        if vacuum_map["map_type"] == 0:
-            # Layout Map, Download this
-            map_url = vacuum_map["map_url"]
-            map_data = requests.get(map_url, timeout=2.5).content
+        print(vacuum_map)
 
+        map_url = vacuum_map["map_url"]
+        map_data = requests.get(map_url, timeout=2.5).content
+
+        if vacuum_map["map_type"] == 1:
+            # Save Path Data
+            with open("path.bin", "wb") as file:
+                file.write(map_data)
+        if vacuum_map["map_type"] == 0:
             # Save Map Data
             with open("layout.bin", "wb") as file:
                 file.write(map_data)

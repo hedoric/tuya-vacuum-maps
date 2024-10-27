@@ -7,13 +7,23 @@ import logging
 
 import lz4.block
 import numpy as np
-from PIL import Image
+from PIL import Image, ImageColor
+import re
 
-from custom_components.tuya_vacuum_maps.const import default_colors, pixel_types
+from custom_components.tuya_vacuum_maps.const import (
+    ORIGIN_MAP_COLOR,
+    MAP_COLOR,
+    BITMAP_TYPE_HEX_MAP,
+    default_colors,
+    pixel_types,
+)
 from custom_components.tuya_vacuum_maps.utils import (
     chunks,
     combine_high_low_to_int,
     hex_to_ints,
+    shrink_number,
+    create_house_color_map,
+    hex_to_alpha_hex,
 )
 
 # Length of map header in bytes
@@ -26,6 +36,16 @@ INFO_BYTE_LEN = 26  # "Room properties"
 NAME_BYTE_LEN = 20  # "Vertices_name"
 
 _LOGGER = logging.getLogger(__name__)
+
+HOUSE_COLOR_MAP = create_house_color_map(
+    1,
+    MAX_ID,
+    ORIGIN_MAP_COLOR,
+    MAP_COLOR["room_60_color"],
+    MAP_COLOR["room_61_color"],
+    MAP_COLOR["room_62_color"],
+    MAP_COLOR["room_63_color"],
+)
 
 
 class VacuumMapHeader:
@@ -67,6 +87,11 @@ class VacuumMapHeader:
             combine_high_low_to_int(integer[0], integer[1])
             for integer in chunks(hex_to_ints(data), 2)
         ]
+
+        self.origin_x = shrink_number(self.origin_x)
+        self.origin_y = shrink_number(self.origin_y)
+        self.pile_x = shrink_number(self.pile_x)
+        self.pile_y = shrink_number(self.pile_y)
 
         self.room_editable = bool(self.type)
 
@@ -154,6 +179,8 @@ class VacuumMap:
         if self.header.type > 255:
             raise RuntimeError(f"Map header type: {self.header.type} is not valid.")
 
+        print(vars(self.header))
+
         # Parse the rest of the map data
         match self.header.version:
             case 0:
@@ -177,6 +204,20 @@ class VacuumMap:
         Taken from tuya_cloud_map_extractor.
         """
         pixels = []
+        colors = {
+            # "bg_color": default_colors.v1.get("bg_color"),
+            "bg_color": ImageColor.getcolor("#006ee6", "RGB"),
+            # "wall_color": default_colors.v1.get("wall_color"),
+            "wall_color": ["50", "50", "50"],
+            # "fun_color": default_colors.v1.get("room_color"),
+            "fun_color": ["150", "150", "150"],
+        }
+        for index, room in enumerate(self.rooms):
+            # This is terrible
+            colors["room_color_" + str(room.id)] = ImageColor.getcolor(
+                ORIGIN_MAP_COLOR[index], "RGB"
+            )
+
         for height_counter in range(self.header.height):
             line = []
             for width_counter in range(self.header.width):
@@ -185,8 +226,9 @@ class VacuumMap:
                         width_counter + height_counter * self.header.width
                     ]
                 )
-                pixel = default_colors.v1.get(pixel_type)
+                pixel = colors.get(pixel_type)
                 if not pixel:
+                    print(f"Unknown pixel type: {pixel_type}")
                     pixel = (20, 20, 20)
                 line.append(pixel)
             pixels.append(line)
@@ -195,7 +237,32 @@ class VacuumMap:
     def _parse_map_version_0(self, data: str):
         """Parse the data of a vacuum map with version 0."""
         # "Normal Version" according to google translate
-        raise NotImplementedError("Map version 0 is not yet supported.")
+        # raise NotImplementedError("Map version 0 is not yet supported.")
+        # If the data is compressed, decompress it
+        if self.header.length_after_compression:
+            max_buffer_length = self.header.total_count * 8
+            encoded_data_array = bytes(hex_to_ints(data[MAP_HEADER_LENGTH:]))
+            decoded_data_array = lz4.block.decompress(
+                encoded_data_array,
+                uncompressed_size=max_buffer_length,
+                return_bytearray=True,
+            )
+            area = self.header.width * self.header.height
+
+            mapDataStr = "".join(
+                "".join(
+                    "".join(
+                        BITMAP_TYPE_HEX_MAP[x]
+                        for x in re.findall(r"\w{2}", format(d, "08b"))
+                    )
+                )
+                for d in decoded_data_array
+            )[: area * 2]
+
+            self.rooms = []
+            self._map_data_array = bytes.fromhex(mapDataStr)
+        else:
+            raise NotImplementedError("Uncompressed map data is not yet supported.")
 
     def _parse_map_version_1(self, data: str):
         """Parse the data of a vacuum map with version 1."""

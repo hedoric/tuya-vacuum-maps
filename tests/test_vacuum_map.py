@@ -20,11 +20,11 @@ def test_vacuum_map_header():
         assert vacuum_map.header.total_count == 361391
         assert vacuum_map.header.width == 601
         assert vacuum_map.header.height == 601
-        assert vacuum_map.header.origin_x == 3000
-        assert vacuum_map.header.origin_y == 3000
+        assert vacuum_map.header.origin_x == 300.0
+        assert vacuum_map.header.origin_y == 300.0
         assert vacuum_map.header.map_resolution == 0
-        assert vacuum_map.header.pile_x == 3020
-        assert vacuum_map.header.pile_y == 3000
+        assert vacuum_map.header.pile_x == 302.0
+        assert vacuum_map.header.pile_y == 300.0
         assert vacuum_map.header.length_after_compression == 27666
         assert not vacuum_map.header.room_editable
 
