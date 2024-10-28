@@ -6,6 +6,22 @@ import hmac
 import requests
 
 
+class InvalidClientIDError(Exception):
+    """Invalid Client ID Error."""
+
+
+class InvalidClientSecretError(Exception):
+    """Invalid Client Secret Error."""
+
+
+class InvalidDeviceIDError(Exception):
+    """Invalid Device ID Error."""
+
+
+class CrossRegionAccessError(Exception):
+    """Cross Region Access Error."""
+
+
 class TuyaCloudAPI:
     """Handles communication with the Tuya Cloud API."""
 
@@ -93,8 +109,35 @@ class TuyaCloudAPI:
             self.base + endpoint, headers=headers, timeout=2.5
         ).json()
 
+        print(response)
+
+        # Check if the request failed
         if not response["success"]:
-            raise RuntimeError(response["msg"])
+            # Check Tuya global error codes
+            # https://developer.tuya.com/en/docs/iot/error-code?id=K989ruxx88swc
+            error_code = response["code"]
+            # error_message = response["msg"]
+
+            if error_code == 1001 or error_code == 1004:
+                # The secret is invalid or the sign is invalid
+                raise InvalidClientSecretError("Invalid Client Secret")
+            elif error_code == 1005:
+                # The client_id is invalid
+                raise InvalidClientIDError("Invalid Client ID")
+            elif error_code == 2007:
+                # The IP address of the request is from another data center.
+                # Access is not allowed.
+                raise CrossRegionAccessError(
+                    "Wrong server region. Cross-region access is not allowed."
+                )
+            elif error_code == 1106:
+                # No permission.
+                # Not allowed to access the API or device.
+                # Assume the device ID is invalid.
+                raise InvalidDeviceIDError("Invalid Device ID")
+            else:
+                # Unknown error code
+                raise RuntimeError(f"Request failed, unknown error: {response}")
 
         return response
 
