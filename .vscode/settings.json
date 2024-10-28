@@ -3,9 +3,5 @@
     "tests"
 ],
 "python.testing.unittestEnabled": false,
-"python.testing.pytestEnabled": true,
-"python.analysis.extraPaths": [
-    // Resolve homeassistant modules
-    "../homeassistant-core"
-]
+"python.testing.pytestEnabled": true
 }
