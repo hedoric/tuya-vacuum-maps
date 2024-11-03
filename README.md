@@ -19,13 +19,6 @@ Create a new [issue](https://github.com/jaidenlab/tuya-vacuum-maps/issues) to ad
 | ----------------------------------------------------- | --------------------------------- |
 | [Lefant M1](https://www.lefant.com/en-ca/products/m1) | $${\color{lightgreen}Supported}$$ |
 
-## Development Roadmap
-
-This is a list of current development goals for this project:
-
-- Feature parity with [Tuya Cloud Vacuum Map Extractor](https://github.com/oven-lab/tuya_cloud_map_extractor)
-- Automated tests for each supported device
-
 ## Development Environment
 
 It's recommended to set up a development environment if you want to make changes to this component.
