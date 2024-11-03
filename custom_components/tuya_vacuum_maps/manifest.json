@@ -24,7 +24,8 @@
         "python-dotenv",
         "requests",
         "six",
-        "urllib3"
+        "urllib3",
+        "tuya-vacuum==0.1.3"
     ],
     "config_flow": true
 }

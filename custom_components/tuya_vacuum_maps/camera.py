@@ -4,11 +4,12 @@ import logging
 
 from typing import override
 from enum import Enum
-import requests
 import io
 
-from custom_components.tuya_vacuum_maps.tuya import TuyaCloudAPI
-from custom_components.tuya_vacuum_maps.vacuum_map import VacuumMap
+from tuya_vacuum import TuyaVacuum
+
+# from custom_components.tuya_vacuum_maps.tuya import TuyaCloudAPI
+# from custom_components.tuya_vacuum_maps.vacuum_map import VacuumMap
 from homeassistant.components.camera import (
     Camera,
     ENTITY_ID_FORMAT,
@@ -30,7 +31,7 @@ async def async_setup_entry(
     _LOGGER.debug("Setting up VacuumMapCamera")
     name = config.title
     entity_id = generate_entity_id(ENTITY_ID_FORMAT, name, hass=hass)
-    server = config.data["server"]
+    origin = config.data["server"]
     client_id = config.data["client_id"]
     secret_key = config.data["client_secret"]
     device_id = config.data["device_id"]
@@ -43,6 +44,7 @@ async def async_setup_entry(
                 client_id,
                 secret_key,
                 device_id,
+                origin,
             )
         ]
     )
@@ -52,7 +54,12 @@ class VacuumMapCamera(Camera):
     """Vacuum Map camera entity."""
 
     def __init__(
-        self, entity_id: str, client_id: str, client_secret: str, device_id: str
+        self,
+        entity_id: str,
+        client_id: str,
+        client_secret: str,
+        device_id: str,
+        origin: str,
     ) -> None:
         """Initialize the camera entity."""
         _LOGGER.debug("Initializing new VacuumMapCamera")
@@ -61,6 +68,7 @@ class VacuumMapCamera(Camera):
         self._device_id = device_id
         self._status = CameraStatus.INITIALIZING
         self._image = None
+        self._origin = origin
         super().__init__()
 
     def update(self) -> None:
@@ -68,39 +76,22 @@ class VacuumMapCamera(Camera):
 
         # Request the realtime layout and path from the Tuya Cloud API
         _LOGGER.debug("Fetching realtime map")
-        tuya = TuyaCloudAPI(
-            base=BASE, client_id=self._client_id, client_secret=self._client_secret
+        vacuum = TuyaVacuum(
+            origin=BASE,
+            client_id=self._client_id,
+            client_secret=self._client_secret,
+            device_id=self._device_id,
         )
-        endpoint = f"/v1.0/users/sweepers/file/{self._device_id}/realtime-map"
-        response = tuya.request(endpoint)
-        _LOGGER.debug(response)
 
-        # Get layout and path file URLs
-        layout_url = response["result"][0]["map_url"]
-        path_url = response["result"][1]["map_url"]
+        # Fetch the realtime map
+        vacuum_map = vacuum.fetch_realtime_map()
 
-        # Download the layout and path files
-        layout_data = requests.get(layout_url, timeout=2.5).content.hex()
-        path_data = requests.get(path_url, timeout=2.5).content.hex()
-
-        # Parse the layout and path files
-        vacuum_map = VacuumMap(layout_data, path_data)
-
-        # Crop the image
+        # Get the image
         image = vacuum_map.to_image()
-        cropped_image = VacuumMap.crop_image(
-            image,
-            410,
-            250,
-            vacuum_map.layout.origin_x,
-            vacuum_map.layout.origin_y,
-            offset_x=50,
-            offset_y=60,
-        )
 
         # Convert the image to bytes
         img_byte_arr = io.BytesIO()
-        cropped_image.save(img_byte_arr, format="PNG")
+        image.save(img_byte_arr, format="PNG")
         self._image = img_byte_arr.getvalue()
 
     @override

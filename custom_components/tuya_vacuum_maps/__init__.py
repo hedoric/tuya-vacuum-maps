@@ -5,10 +5,12 @@ import logging
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant
+import tuya_vacuum
 
 from .const import DOMAIN
 
 _LOGGER = logging.getLogger(__name__)
+logging.getLogger("tuya_vacuum").setLevel(logging.DEBUG)
 
 
 async def async_setup_entry(hass: HomeAssistant, config: ConfigEntry) -> bool:
