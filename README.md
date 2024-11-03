@@ -4,9 +4,6 @@
 This component adds a new camera which polls the Tuya Cloud API for the latest realtime map data.<br>
 This project is primarily focused on Lefant vacuums, but aims to support all Tuya vacuums.
 
-> [!CAUTION]
-> This project does not work and is in development
-
 ## Installation
 
 ### Installing Manually
