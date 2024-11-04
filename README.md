@@ -4,9 +4,6 @@
 This component adds a new camera which polls the Tuya Cloud API for the latest realtime map data.<br>
 This project is primarily focused on Lefant vacuums, but aims to support all Tuya vacuums.
 
-> [!CAUTION]
-> This project does not work and is in development
-
 ## Installation
 
 ### Installing Manually
@@ -21,13 +18,6 @@ Create a new [issue](https://github.com/jaidenlab/tuya-vacuum-maps/issues) to ad
 | Device                                                | Support                           |
 | ----------------------------------------------------- | --------------------------------- |
 | [Lefant M1](https://www.lefant.com/en-ca/products/m1) | $${\color{lightgreen}Supported}$$ |
-
-## Development Roadmap
-
-This is a list of current development goals for this project:
-
-- Feature parity with [Tuya Cloud Vacuum Map Extractor](https://github.com/oven-lab/tuya_cloud_map_extractor)
-- Automated tests for each supported device
 
 ## Development Environment
 
@@ -49,10 +39,7 @@ It's recommended to set up a development environment if you want to make changes
       - `python -m venv venv`
    2. Activate the virtual environment:
       - `source ./venv/bin/activate`
-6. Install the package in "editable" mode
-   - `pip install -e .`
 
 ## Special Thanks
 
 - [Tuya Cloud Vacuum Map Extractor](https://github.com/oven-lab/tuya_cloud_map_extractor) by [@oven-lab](https://github.com/oven-lab)
-- [Xiaomi Cloud Map Extractor](https://github.com/PiotrMachowski/Home-Assistant-custom-components-Xiaomi-Cloud-Map-Extractor) by [@PiotrMachowski](https://github.com/PiotrMachowski)
