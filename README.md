@@ -8,7 +8,13 @@ This project is primarily focused on Lefant vacuums, but aims to support all Tuy
 
 ### Installing Manually
 
-To install this component, add the contents of `custom_components` to your Home Assistants `custom_components` folder and reboot.
+To install this integration manually, add the contents of `custom_components` to your Home Assistants `custom_components` folder and reboot.
+
+### Installing using HACS
+
+1. [Install HACS](https://www.hacs.xyz/docs/use/) if its not already installed.
+1. Add this repository to HACS by following this guide: [HACS: Add Custom Repository](https://www.hacs.xyz/docs/faq/custom_repositories/).
+3. Search for this integration using the HACS browser inside Home Assistant, and install.
 
 ## Compatability List
 
