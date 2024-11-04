@@ -11,21 +11,9 @@
     "iot_class": "cloud_polling",
     "issue_tracker": "https://github.com/jaidenlabelle/tuya-vacuum-maps/issues",
     "requirements": [
-        "certifi",
-        "charset-normalizer",
-        "idna",
-        "iniconfig",
         "lz4",
         "numpy",
-        "packaging",
         "pillow",
-        "pluggy",
-        "pytest",
-        "pytest-mock",
-        "python-dotenv",
-        "requests",
-        "six",
-        "urllib3",
         "tuya-vacuum==0.1.3"
     ],
     "version": "0.1.0"

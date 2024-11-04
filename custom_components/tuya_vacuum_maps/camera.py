@@ -1,86 +1,88 @@
-"""Vacuum Map camera entity integration for Home Assistant."""
+"""Home Assistant entity to display the map from a vacuum."""
 
-import logging
-
-from typing import override
-from enum import Enum
 import io
+import logging
+from datetime import timedelta
+from typing import Any, Coroutine, final
 
-from tuya_vacuum import TuyaVacuum
-
-# from custom_components.tuya_vacuum_maps.tuya import TuyaCloudAPI
-# from custom_components.tuya_vacuum_maps.vacuum_map import VacuumMap
+import tuya_vacuum
 from homeassistant.components.camera import (
     Camera,
-    ENTITY_ID_FORMAT,
     CameraEntityFeature,
+    CameraState,
+    ENTITY_ID_FORMAT,
 )
-
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.entity import generate_entity_id
+
+SCAN_INTERVAL = timedelta(seconds=10)
 
 _LOGGER = logging.getLogger(__name__)
 
-BASE = "https://openapi.tuyaus.com"
-
 
 async def async_setup_entry(
-    hass: HomeAssistant, config: ConfigEntry, async_add_entries, discovery_info=None
-) -> bool:
-    _LOGGER.debug("Setting up VacuumMapCamera")
-    name = config.title
+    hass: HomeAssistant,
+    config_entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+) -> None:
+    """Add camera for passed config_entry in HA."""
+
+    _LOGGER.debug("Async setup entry")
+    name = config_entry.title
     entity_id = generate_entity_id(ENTITY_ID_FORMAT, name, hass=hass)
-    origin = config.data["server"]
-    client_id = config.data["client_id"]
-    secret_key = config.data["client_secret"]
-    device_id = config.data["device_id"]
+    origin = config_entry.data["server"]
+    client_id = config_entry.data["client_id"]
+    client_secret = config_entry.data["client_secret"]
+    device_id = config_entry.data["device_id"]
 
     _LOGGER.debug("Adding entities")
-    async_add_entries(
-        [
-            VacuumMapCamera(
-                entity_id,
-                client_id,
-                secret_key,
-                device_id,
-                origin,
-            )
-        ]
+
+    # Add entity to HA.
+    async_add_entities(
+        [VacuumMapCamera(origin, client_id, client_secret, device_id, entity_id, hass)]
     )
+
+    _LOGGER.debug("Done")
 
 
 class VacuumMapCamera(Camera):
-    """Vacuum Map camera entity."""
+    """Home Assistant entity to display the map from a vacuum."""
 
-    def __init__(
-        self,
-        entity_id: str,
-        client_id: str,
-        client_secret: str,
-        device_id: str,
-        origin: str,
-    ) -> None:
-        """Initialize the camera entity."""
-        _LOGGER.debug("Initializing new VacuumMapCamera")
+    def __init__(self, origin, client_id, client_secret, device_id, entity_id, hass):
+        """Initialize the camera."""
+        super().__init__()
+        self._origin = origin
         self._client_id = client_id
         self._client_secret = client_secret
         self._device_id = device_id
-        self._status = CameraStatus.INITIALIZING
         self._image = None
-        self._origin = origin
-        super().__init__()
+        self.hass = hass
+
+        # Try to get this to work
+        self.content_type = "image/png"
+        self.entity_id = entity_id
+        self._attr_is_streaming = True
+
+    # async def async_added_to_hass(self) -> None:
+    #     self.async_schedule_update_ha_state(True)
 
     def update(self) -> None:
-        """Fetch the latest data."""
+        """Update the image."""
+        raise NotImplementedError
 
-        # Request the realtime layout and path from the Tuya Cloud API
-        _LOGGER.debug("Fetching realtime map")
-        vacuum = TuyaVacuum(
-            origin=BASE,
-            client_id=self._client_id,
-            client_secret=self._client_secret,
-            device_id=self._device_id,
+    async def async_update(self) -> None:
+        """Update the image."""
+
+        _LOGGER.debug("Updating image")
+
+        vacuum = await self.hass.async_add_executor_job(
+            tuya_vacuum.TuyaVacuum,
+            self._origin,
+            self._client_id,
+            self._client_secret,
+            self._device_id,
         )
 
         # Fetch the realtime map
@@ -94,57 +96,12 @@ class VacuumMapCamera(Camera):
         image.save(img_byte_arr, format="PNG")
         self._image = img_byte_arr.getvalue()
 
-    @override
-    def camera_image(
+    async def async_camera_image(
         self, width: int | None = None, height: int | None = None
-    ) -> bytes | None:
-        """Return bytes of the camera image."""
-        if self._image:
-            return self._image
-        else:
-            return None
-
-    async def async_added_to_hass(self) -> None:
-        self.async_schedule_update_ha_state(True)
-
-    @property
-    def supported_features(self) -> int:
-        return CameraEntityFeature.ON_OFF
+    ) -> Coroutine[Any, Any, bytes | None]:
+        """Return bytes of the image."""
+        return self._image
 
     @property
     def should_poll(self) -> bool:
-        if self._status in [CameraStatus.OK, CameraStatus.INITIALIZING]:
-            return True
-        else:
-            return False
-
-    @property
-    def state(self) -> str:
-        _LOGGER.debug("Fetching state")
-        if self._status == CameraStatus.OK:
-            return "on"
-        if self._status == CameraStatus.FAILURE:
-            return "error"
-        if self._status == CameraStatus.OFF:
-            return "off"
-        if self._status == CameraStatus.INITIALIZING:
-            return "initializing"
-        return "unknown"
-
-    @property
-    def frame_interval(self) -> float:
-        return 1
-
-    def turn_on(self):
-        self._status = CameraStatus.INITIALIZING
-
-    def turn_off(self):
-        self._status = CameraStatus.OFF
-        self.async_schedule_update_ha_state(True)
-
-
-class CameraStatus(Enum):
-    INITIALIZING = "Initializing"
-    OK = "OK"
-    OFF = "OFF"
-    FAILURE = "Failure"
+        return True
