@@ -3,15 +3,10 @@
 import io
 import logging
 from datetime import timedelta
-from typing import Any, Coroutine, final
+from typing import Any, Coroutine
 
 import tuya_vacuum
-from homeassistant.components.camera import (
-    Camera,
-    CameraEntityFeature,
-    CameraState,
-    ENTITY_ID_FORMAT,
-)
+from homeassistant.components.camera import Camera, ENTITY_ID_FORMAT
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
