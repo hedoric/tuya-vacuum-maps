@@ -1,102 +1,123 @@
-"""Home Assistant entity to display the map from a vacuum."""
+"""Representation of a Tuya vacuum cleaner."""
 
-import io
 import logging
-from datetime import timedelta
-from typing import Any, Coroutine
+import base64
+import gzip
+import json
+import httpx
 
 import tuya_vacuum
-from homeassistant.components.camera import Camera, ENTITY_ID_FORMAT
-from homeassistant.config_entries import ConfigEntry
-from homeassistant.core import HomeAssistant
-from homeassistant.helpers.entity_platform import AddEntitiesCallback
-from homeassistant.helpers.entity import generate_entity_id
-
-SCAN_INTERVAL = timedelta(seconds=10)
+import tuya_vacuum.tuya
 
 _LOGGER = logging.getLogger(__name__)
 
 
-async def async_setup_entry(
-    hass: HomeAssistant,
-    config_entry: ConfigEntry,
-    async_add_entities: AddEntitiesCallback,
-) -> None:
-    """Add camera for passed config_entry in HA."""
+class Vacuum:
+    """Representation of a vacuum cleaner."""
 
-    _LOGGER.debug("Async setup entry")
-    name = config_entry.title
-    entity_id = generate_entity_id(ENTITY_ID_FORMAT, name, hass=hass)
-    origin = config_entry.data["server"]
-    client_id = config_entry.data["client_id"]
-    client_secret = config_entry.data["client_secret"]
-    device_id = config_entry.data["device_id"]
-
-    _LOGGER.debug("Adding entities")
-
-    # Add entity to HA.
-    async_add_entities(
-        [VacuumMapCamera(origin, client_id, client_secret, device_id, entity_id, hass)]
-    )
-
-    _LOGGER.debug("Done")
-
-
-class VacuumMapCamera(Camera):
-    """Home Assistant entity to display the map from a vacuum."""
-
-    def __init__(self, origin, client_id, client_secret, device_id, entity_id, hass):
-        """Initialize the camera."""
-        super().__init__()
-        self._origin = origin
-        self._client_id = client_id
-        self._client_secret = client_secret
-        self._device_id = device_id
-        self._image = None
-        self.hass = hass
-
-        # Try to get this to work
-        self.content_type = "image/png"
-        self.entity_id = entity_id
-        self._attr_is_streaming = True
-
-    # async def async_added_to_hass(self) -> None:
-    #     self.async_schedule_update_ha_state(True)
-
-    def update(self) -> None:
-        """Update the image."""
-        raise NotImplementedError
-
-    async def async_update(self) -> None:
-        """Update the image."""
-
-        _LOGGER.debug("Updating image")
-
-        vacuum = await self.hass.async_add_executor_job(
-            tuya_vacuum.TuyaVacuum,
-            self._origin,
-            self._client_id,
-            self._client_secret,
-            self._device_id,
+    def __init__(
+        self,
+        origin: str,
+        client_id: str,
+        client_secret: str,
+        device_id: str,
+        client: httpx.Client = None,
+    ) -> None:
+        """Initialize the Vacuum instance."""
+        self.device_id = device_id
+        self.api = tuya_vacuum.tuya.TuyaCloudAPI(
+            origin, client_id, client_secret, client
         )
 
-        # Fetch the realtime map
-        vacuum_map = vacuum.fetch_realtime_map()
+    def fetch_map(self) -> tuya_vacuum.Map:
+        """
+        Get the current map from the vacuum cleaner.
 
-        # Get the image
-        image = vacuum_map.to_image()
+        Falls back to /list + /download if realtime-map is empty
+        (as on Mongsa MS1).
+        """
+        response = self.api.request(
+            "GET", f"/v1.0/users/sweepers/file/{self.device_id}/realtime-map"
+        )
 
-        # Convert the image to bytes
-        img_byte_arr = io.BytesIO()
-        image.save(img_byte_arr, format="PNG")
-        self._image = img_byte_arr.getvalue()
+        if not response.get("result"):
+            _LOGGER.debug("Realtime map empty → falling back to file-based map")
+            return self.fetch_latest_map_file()
 
-    async def async_camera_image(
-        self, width: int | None = None, height: int | None = None
-    ) -> Coroutine[Any, Any, bytes | None]:
-        """Return bytes of the image."""
-        return self._image
+        layout = None
+        path = None
 
-    @property
-    def should_poll(self) -> bool:
-        return True
+        for map_part in response["result"]:
+            map_url = map_part.get("map_url")
+            map_type = map_part.get("map_type")
+
+            if not map_url:
+                continue
+
+            map_data = self.api.client.request("GET", map_url).content
+
+            match map_type:
+                case 0:
+                    layout = tuya_vacuum.map.Layout(map_data)
+                case 1:
+                    path = tuya_vacuum.map.Path(map_data)
+                case _:
+                    _LOGGER.warning("Unknown map type: %s", map_type)
+
+        if layout is None:
+            _LOGGER.warning("No layout data found")
+        if path is None:
+            _LOGGER.warning("No path data found")
+
+        return tuya_vacuum.Map(layout, path)
+
+    def fetch_latest_map_file(self) -> tuya_vacuum.Map:
+        """Retrieve the most recent map via /list → /download endpoints."""
+        # Step 1: list maps
+        list_resp = self.api.request(
+            "GET",
+            f"/v1.0/users/sweepers/file/{self.device_id}/list?page_no=1&page_size=1",
+        )
+        items = (list_resp.get("result") or {})
+        if isinstance(items, dict) and "list" in items:
+            items = items["list"]
+        if not items:
+            raise RuntimeError("No map files available for fallback")
+
+        first = items[0]
+        record_id = first["id"] if isinstance(first, dict) else first
+
+        # Step 2: download links
+        dl_resp = self.api.request(
+            "GET",
+            f"/v1.0/users/sweepers/file/{self.device_id}/download?id={record_id}",
+        )
+        result = dl_resp.get("result") or {}
+        url = result.get("app_map") or result.get("robot_map")
+        if not url:
+            raise RuntimeError("Download links missing (no app_map/robot_map)")
+
+        # Step 3: download and decode
+        raw = self.api.client.request("GET", url).content
+        data = raw
+        if len(data) >= 2 and data[:2] == b"\x1f\x8b":
+            data = gzip.decompress(data)
+        if data[:1] in (b"{", b"["):
+            try:
+                j = json.loads(data.decode("utf-8", "ignore"))
+                if isinstance(j, dict):
+                    enc = j.get("img") or j.get("map") or j.get("data")
+                    if isinstance(enc, str):
+                        data = base64.b64decode(enc)
+            except Exception as e:
+                _LOGGER.debug("JSON parse error on fallback map: %s", e)
+
+        # Step 4: wrap in Map
+        try:
+            layout = tuya_vacuum.map.Layout(data)
+            path = None
+        except Exception as e:
+            _LOGGER.warning("Failed to parse fallback map layout: %s", e)
+            layout, path = None, None
+
+        return tuya_vacuum.Map(layout, path)
