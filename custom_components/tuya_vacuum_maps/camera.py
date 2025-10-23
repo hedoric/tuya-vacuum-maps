@@ -81,7 +81,7 @@ class VacuumMapCamera(Camera):
         )
 
         # Fetch the realtime map
-        vacuum_map = vacuum.fetch_realtime_map()
+        vacuum_map = vacuum.fetch_map()
 
         # Get the image
         image = vacuum_map.to_image()
