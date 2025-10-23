@@ -3,6 +3,8 @@
 import logging
 from typing import Any, override
 
+import voluptuous as vol
+
 import tuya_vacuum
 from tuya_vacuum.tuya import (
     CrossRegionAccessError,
@@ -10,7 +12,6 @@ from tuya_vacuum.tuya import (
     InvalidClientSecretError,
     InvalidDeviceIDError,
 )
-import voluptuous as vol
 
 from homeassistant import config_entries
 from homeassistant.const import (
@@ -26,20 +27,29 @@ _LOGGER = logging.getLogger(__name__)
 
 
 async def validate_input(data: dict) -> None:
-    """Validate that the user input allows us to connect."""
+    """Validate that the user input allows us to connect to the Tuya API."""
+    _LOGGER.debug("Validating input for Tuya Vacuum Maps integration...")
 
-    vacuum = tuya_vacuum.TuyaVacuum(
-        data["server"], data["client_id"], data["client_secret"], data["device_id"]
+    # Use your forked class Vacuum (not TuyaVacuum)
+    vacuum = tuya_vacuum.Vacuum(
+        data["server"],
+        data["client_id"],
+        data["client_secret"],
+        data["device_id"],
     )
 
-    vacuum.fetch_realtime_map()
+    # Test the connection and verify the credentials by attempting to fetch a map
+    try:
+        vacuum.fetch_map()
+        _LOGGER.debug("Validation succeeded for device %s", data["device_id"])
+    except Exception as err:
+        _LOGGER.error("Validation failed during fetch_map(): %s", err)
+        raise
 
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     """Handle a config flow for Tuya Vacuum Maps."""
 
-    # Schema version of the entries it creates
-    # Home Assistant will call the migrate method if the version changes
     VERSION = 1
     MINOR_VERSION = 1
 
@@ -47,29 +57,22 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
     async def async_step_user(
         self, user_input: dict[str, Any] | None = None
     ) -> config_entries.ConfigFlowResult:
-        """This is Invoked when a user initiates a flow via the user interface.
+        """Invoked when a user starts the setup via the UI."""
 
-        Also called when discovered but a matching discovery step is not defined.
-        """
-
-        # List of errors related to the form
-        errors = {}
+        errors: dict[str, str] = {}
 
         if user_input is not None:
             try:
-                try:
-                    await validate_input(user_input)
+                await validate_input(user_input)
 
-                    # Process the information
-                    return self.async_create_entry(
-                        title=user_input.pop(CONF_NAME), data=user_input
-                    )
-                except Exception as err:
-                    _LOGGER.error("Error occurred while validating: %s", err)
-                    raise err
+                # If validation succeeded, create the config entry
+                return self.async_create_entry(
+                    title=user_input.pop(CONF_NAME), data=user_input
+                )
+
             except CrossRegionAccessError:
                 errors[CONF_SERVER] = (
-                    "Cross region access is not allowed, data center mismatch."
+                    "Cross-region access is not allowed. Check data center."
                 )
             except InvalidClientIDError:
                 errors[CONF_CLIENT_ID] = "Invalid Client ID."
@@ -77,26 +80,25 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors[CONF_CLIENT_SECRET] = "Invalid Client Secret."
             except InvalidDeviceIDError:
                 errors[CONF_DEVICE_ID] = "Invalid Device ID."
-            except Exception:  # pylint: disable=broad-except
+            except Exception as err:
+                _LOGGER.error("Unexpected validation error: %s", err)
                 errors["base"] = "Unknown error occurred."
-        # Define the schema of the form
+
+        # Build the configuration form shown in HA UI
         data_schema = vol.Schema(
             {
-                # Device Name
                 vol.Required(CONF_NAME, default="Vacuum Map"): str,
-                # Server API URL
                 vol.Required(CONF_SERVER, default=CONF_SERVER_WEST_AMERICA): vol.In(
                     CONF_SERVERS
                 ),
-                # Client ID
                 vol.Required(CONF_CLIENT_ID, default=""): str,
-                # Client Secret
                 vol.Required(CONF_CLIENT_SECRET, default=""): str,
-                # Device ID
                 vol.Required(CONF_DEVICE_ID, default=""): str,
             }
         )
 
         return self.async_show_form(
-            step_id="user", data_schema=data_schema, errors=errors
+            step_id="user",
+            data_schema=data_schema,
+            errors=errors,
         )
