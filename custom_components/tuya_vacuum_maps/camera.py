@@ -34,7 +34,6 @@ async def async_setup_entry(
 
     _LOGGER.debug("Adding entities")
 
-    # Add entity to HA.
     async_add_entities(
         [VacuumMapCamera(origin, client_id, client_secret, device_id, entity_id, hass)]
     )
@@ -55,38 +54,32 @@ class VacuumMapCamera(Camera):
         self._image = None
         self.hass = hass
 
-        # Try to get this to work
         self.content_type = "image/png"
         self.entity_id = entity_id
         self._attr_is_streaming = True
 
-    # async def async_added_to_hass(self) -> None:
-    #     self.async_schedule_update_ha_state(True)
-
     def update(self) -> None:
-        """Update the image."""
+        """Synchronous updates are unused."""
         raise NotImplementedError
 
     async def async_update(self) -> None:
         """Update the image."""
-
         _LOGGER.debug("Updating image")
 
+        # Build the library client in executor (I/O bound)
         vacuum = await self.hass.async_add_executor_job(
-            tuya_vacuum.TuyaVacuum,
+            tuya_vacuum.Vacuum,
             self._origin,
             self._client_id,
             self._client_secret,
             self._device_id,
         )
 
-        # Fetch the realtime map
+        # Fetch map (realtime, or file fallback on MS1)
         vacuum_map = vacuum.fetch_map()
 
-        # Get the image
+        # Convert to PNG bytes
         image = vacuum_map.to_image()
-
-        # Convert the image to bytes
         img_byte_arr = io.BytesIO()
         image.save(img_byte_arr, format="PNG")
         self._image = img_byte_arr.getvalue()
