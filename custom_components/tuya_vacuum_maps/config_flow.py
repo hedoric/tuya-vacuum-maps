@@ -38,13 +38,8 @@ async def validate_input(data: dict) -> None:
         data["device_id"],
     )
 
-    # Test the connection and verify the credentials by attempting to fetch a map
-    try:
-        vacuum.fetch_map()
-        _LOGGER.debug("Validation succeeded for device %s", data["device_id"])
-    except Exception as err:
-        _LOGGER.error("Validation failed during fetch_map(): %s", err)
-        raise
+    # Will try realtime; if empty, falls back to file map (MS1)
+    vacuum.fetch_map()
 
 
 class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
@@ -64,12 +59,9 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         if user_input is not None:
             try:
                 await validate_input(user_input)
-
-                # If validation succeeded, create the config entry
                 return self.async_create_entry(
                     title=user_input.pop(CONF_NAME), data=user_input
                 )
-
             except CrossRegionAccessError:
                 errors[CONF_SERVER] = (
                     "Cross-region access is not allowed. Check data center."
@@ -80,11 +72,10 @@ class ConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                 errors[CONF_CLIENT_SECRET] = "Invalid Client Secret."
             except InvalidDeviceIDError:
                 errors[CONF_DEVICE_ID] = "Invalid Device ID."
-            except Exception as err:
+            except Exception as err:  # keep broad except for unknown API errors
                 _LOGGER.error("Unexpected validation error: %s", err)
                 errors["base"] = "Unknown error occurred."
 
-        # Build the configuration form shown in HA UI
         data_schema = vol.Schema(
             {
                 vol.Required(CONF_NAME, default="Vacuum Map"): str,
