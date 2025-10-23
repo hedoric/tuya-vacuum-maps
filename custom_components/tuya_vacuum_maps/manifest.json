@@ -1,17 +1,13 @@
 {
-    "domain": "tuya_vacuum_maps",
-    "name": "Tuya Vacuum Maps",
-    "codeowners": [
-        "@jaidenlabelle"
-    ],
-    "config_flow": true,
-    "dependencies": [],
-    "documentation": "https://github.com/jaidenlabelle/tuya-vacuum-maps",
-    "integration_type": "device",
-    "iot_class": "cloud_polling",
-    "issue_tracker": "https://github.com/jaidenlabelle/tuya-vacuum-maps/issues",
-    "requirements": [
-        "tuya-vacuum-ms1==0.1.0"
-    ],
-    "version": "0.1.4"
+  "domain": "tuya_vacuum_maps",
+  "name": "Tuya Vacuum Maps",
+  "codeowners": ["@hedoric"],
+  "config_flow": true,
+  "dependencies": [],
+  "documentation": "https://github.com/hedoric/tuya-vacuum-maps",
+  "integration_type": "device",
+  "iot_class": "cloud_polling",
+  "issue_tracker": "https://github.com/hedoric/tuya-vacuum-maps/issues",
+  "requirements": ["tuya-vacuum-ms1==0.1.1"],
+  "version": "0.1.5-ms1"
 }
